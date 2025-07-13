@@ -181,11 +181,15 @@ void main() {
             </ul>
         </div>
     </nav>
+
     <main class="p-8 [&>div]:mb-8">
 
-        <!-- <div class="skeleton w-full h-[60vh]"></div> -->
-
-        <div class="border border-base-300 rounded-lg overflow-hidden">
+        <div class="border border-base-500 rounded-lg overflow-hidden">
+            <div role="tablist" class="tabs tabs-border">
+                <a role="tab" id="vertex-tab" class="tab  tab-active">Vertex</a>
+                <a role="tab" id="pixel-tab" class="tab">Pixel</a>
+                <a role="tab" id="geometry-tab" class="tab">Geometry</a>
+            </div>
             <div id="editor" class="w-full h-[60vh]"></div>
         </div>
 
@@ -249,5 +253,6 @@ void main() {
 
 <!-- https://daisyui.com/components/ -->
 <!-- https://fontawesome.com/search -->
+<!-- https://stackoverflow.com/questions/53900950/tabs-in-monaco-editor -->
 
 </html>
