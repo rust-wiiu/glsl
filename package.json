@@ -1,12 +1,12 @@
 {
-  "name": "glsl-compiler",
-  "module": "index.ts",
   "devDependencies": {
     "@types/bun": "latest",
     "bun-plugin-tailwind": "^0.0.15",
     "daisyui": "^5.0.46",
     "tailwindcss": "^4.1.11"
   },
+  "module": "index.ts",
+  "name": "glsl-compiler",
   "peerDependencies": {
     "typescript": "^5"
   },
