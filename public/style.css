@@ -1,2 +1,19 @@
 @import "tailwindcss";
 @plugin "daisyui";
+
+
+.radio-tabs input[type="radio"] {
+    display: none;
+}
+
+.radio-tabs label {
+    @apply btn;
+}
+
+.radio-tabs input[type="radio"]:not(:checked)+label {
+    @apply btn-ghost opacity-50;
+}
+
+.radio-tabs input[type="radio"]:checked+label {
+    @apply btn-primary;
+}

@@ -11,16 +11,32 @@
     <script src="https://unpkg.com/monaco-editor@0.45.0/min/vs/loader.js"></script>
 
     <script defer>
-        let editor;
+        let editor = null;
+        let data = {
+            vertex: {
+                model: null,
+                state: null,
+            },
+            pixel: {
+                model: null,
+                state: null,
+            },
+            geometry: {
+                model: null,
+                state: null
+            }
+        };
+
+        const DEFAULT_VERTEX = `// vertex\n`;
+        const DEFAULT_PIXEL = `// pixel\n`;
+        const DEFAULT_GEOMETRY = `// geometry\n`;
 
         require.config({ paths: { 'vs': 'https://unpkg.com/monaco-editor@0.45.0/min/vs' } });
 
         require(['vs/editor/editor.main'], function () {
-            // Register GLSL language if not already available
             if (!monaco.languages.getLanguages().find(lang => lang.id === 'glsl')) {
                 monaco.languages.register({ id: 'glsl' });
 
-                // Basic GLSL syntax highlighting
                 monaco.languages.setMonarchTokensProvider('glsl', {
                     tokenizer: {
                         root: [
@@ -39,8 +55,6 @@
                     }
                 });
             }
-
-            // Determine initial theme
             function getInitialTheme() {
                 const theme = document.documentElement.getAttribute('data-theme');
 
@@ -53,18 +67,12 @@
                 return (theme === 'dark') ? 'vs-dark' : 'vs';
             }
 
-            editor = monaco.editor.create(document.getElementById('editor'), {
-                value: `// Vertex Shader Example
-attribute vec3 position;
-attribute vec2 uv;
-uniform mat4 modelViewProjectionMatrix;
-varying vec2 vUv;
+            data.vertex.model = monaco.editor.createModel(DEFAULT_VERTEX, "glsl");
+            data.pixel.model = monaco.editor.createModel(DEFAULT_PIXEL, "glsl");
+            data.geometry.model = monaco.editor.createModel(DEFAULT_GEOMETRY, "glsl");
 
-void main() {
-    vUv = uv;
-    gl_Position = modelViewProjectionMatrix * vec4(position, 1.0);
-}`,
-                language: 'glsl',
+            editor = monaco.editor.create(document.getElementById('editor'), {
+                model: data.vertex.model,
                 theme: getInitialTheme(),
                 automaticLayout: true,
                 minimap: { enabled: false },
@@ -74,7 +82,7 @@ void main() {
                 wordWrap: 'on'
             });
 
-            // Theme integration with DaisyUI
+
             function updateEditorTheme() {
                 if (!editor) return;
 
@@ -99,24 +107,46 @@ void main() {
                 editor.updateOptions({ theme: monacoTheme });
             }
 
-            // Listen for theme changes on the document
-            const observer = new MutationObserver(updateEditorTheme);
-            observer.observe(document.documentElement, {
-                attributes: true,
-                attributeFilter: ['data-theme']
-            });
 
-            // Also listen for theme controller changes
             document.addEventListener('change', function (e) {
-                if (e.target.name === 'theme-dropdown') {
-                    updateEditorTheme();
+                switch (e.target.name) {
+                    case 'theme-dropdown':
+                        updateEditorTheme();
+                        break;
+                    case 'editor-tab':
+                        updateEditorTab(e.target.value);
+                        break;
                 }
             });
         });
 
-        // Function to get editor content (for compile button)
         function getShaderCode() {
-            return editor ? editor.getValue() : '';
+            console.log({
+                vertex: data.vertex.model.getValue(),
+                pixel: data.pixel.model.getValue(),
+                geometry: data.geometry.model.getValue()
+            });
+        }
+
+        function updateEditorTab(tab) {
+            let state = editor.saveViewState();
+            let model = editor.getModel();
+
+            switch (model) {
+                case data.vertex.model:
+                    data.vertex.state = state;
+                    break;
+                case data.pixel.model:
+                    data.pixel.state = state;
+                    break;
+                case data.geometry.model:
+                    data.geometry.state = state;
+                    break;
+            }
+
+            editor.setModel(data[tab].model);
+            editor.restoreViewState(data[tab].state);
+            editor.focus();
         }
     </script>
 </head>
@@ -185,15 +215,22 @@ void main() {
     <main class="p-8 [&>div]:mb-8">
 
         <div class="border border-base-500 rounded-lg overflow-hidden">
-            <div role="tablist" class="tabs tabs-border">
-                <a role="tab" id="vertex-tab" class="tab  tab-active">Vertex</a>
-                <a role="tab" id="pixel-tab" class="tab">Pixel</a>
-                <a role="tab" id="geometry-tab" class="tab">Geometry</a>
+
+            <div class="radio-tabs border-b border-base-500 overflow-hidden">
+                <input type="radio" id="option1" name="editor-tab" value="vertex" checked>
+                <label for="option1">Vertex</label>
+
+                <input type="radio" id="option2" name="editor-tab" value="pixel">
+                <label for="option2">Pixel</label>
+
+                <input type="radio" id="option3" name="editor-tab" value="geometry">
+                <label for="option3">Geometry</label>
             </div>
+
             <div id="editor" class="w-full h-[60vh]"></div>
         </div>
 
-        <div class="flex align-middle justify-center">
+        <div class="flex align-middle justify-center gap-x-4">
             <button class="btn btn-primary">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512" class="size-5" fill="currentColor">
                     <path
