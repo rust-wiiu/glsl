@@ -1,6 +1,7 @@
 {
   "devDependencies": {
     "@types/bun": "latest",
+    "bun-plugin-html": "^2.2.8",
     "bun-plugin-tailwind": "^0.0.15",
     "daisyui": "^5.0.46",
     "tailwindcss": "^4.1.11"
@@ -12,7 +13,8 @@
   },
   "private": true,
   "scripts": {
-    "dev": "bun ./public/index.html --console"
+    "dev": "bun ./src/index.html --console",
+    "build": "bun build ./src/index.html --outdir ./out"
   },
   "type": "module"
 }
