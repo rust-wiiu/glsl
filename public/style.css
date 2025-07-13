@@ -10,10 +10,14 @@
     @apply btn;
 }
 
-.radio-tabs input[type="radio"]:not(:checked)+label {
+.radio-tabs input[type="radio"]:not(:checked) + label {
     @apply btn-ghost opacity-50;
 }
 
-.radio-tabs input[type="radio"]:checked+label {
+.radio-tabs input[type="radio"]:checked + label {
     @apply btn-primary;
+}
+
+.radio-tabs label[for="geometry-tab"] {
+    display: none;
 }
