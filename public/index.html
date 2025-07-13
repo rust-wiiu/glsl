@@ -3,8 +3,13 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta name="description" content="Wii U GLSL Compiler">
+    <meta name="author" content="29th-Day">
+    <meta name="keywords" content="GLSL, Wii U, Shader, GX2">
+    <meta name="remember" content="Love over Fear">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wii U Shader Compiler</title>
+
     <link rel="stylesheet" href="style.css" />
     <link rel="icon" href="favicon.svg" />
 
@@ -27,34 +32,204 @@
             }
         };
 
-        const DEFAULT_VERTEX = `// vertex\n`;
-        const DEFAULT_PIXEL = `// pixel\n`;
+        const DEFAULT_VERTEX = `#version 330 core\n\nlayout(location = 0) in vec2 aPos;\nlayout(location = 1) in vec4 aColor;\n\nout vec4 vColor;\n\nvoid main() {\n    gl_Position = vec4(aPos.x, aPos.y, 0.0f, 1.0f);\n    vColor = aColor;\n}`;
+        const DEFAULT_PIXEL = `#version 330 core\n\nin vec4 vColor;\nout vec4 FragColor;\n\nvoid main() {\n    FragColor = vColor;\n}`;
         const DEFAULT_GEOMETRY = `// geometry\n`;
 
-        require.config({ paths: { 'vs': 'https://unpkg.com/monaco-editor@0.45.0/min/vs' } });
+        // region: GLSL
+
+        const conf = {
+            comments: {
+                lineComment: '//',
+                blockComment: ['/*', '*/']
+            },
+            brackets: [
+                ['{', '}'],
+                ['[', ']'],
+                ['(', ')']
+            ],
+            autoClosingPairs: [
+                { open: '[', close: ']' },
+                { open: '{', close: '}' },
+                { open: '(', close: ')' },
+                { open: "'", close: "'", notIn: ['string', 'comment'] },
+                { open: '"', close: '"', notIn: ['string'] }
+            ],
+            surroundingPairs: [
+                { open: '{', close: '}' },
+                { open: '[', close: ']' },
+                { open: '(', close: ')' },
+                { open: '"', close: '"' },
+                { open: "'", close: "'" }
+            ]
+        }
+
+        const language = {
+            tokenPostfix: '.glsl',
+            // Set defaultToken to invalid to see what you do not tokenize yet
+            defaultToken: 'invalid',
+            keywords: [
+                'const', 'uniform', 'break', 'continue', 'layout',
+                'do', 'for', 'while', 'if', 'else', 'switch', 'case', 'in', 'out', 'inout', 'true', 'false',
+                'invariant', 'discard', 'return', 'sampler2D', 'samplerCube', 'sampler3D', 'struct',
+                'vec2', 'vec3', 'vec4', 'ivec2', 'ivec3', 'ivec4', 'uvec2', 'uvec3', 'uvec4', 'bvec2', 'bvec3', 'bvec4',
+                'mat2', 'mat3', 'mat2x2', 'mat2x3', 'mat2x4', 'mat3x2', 'mat3x3', 'mat3x4', 'mat4x2', 'mat4x3', 'mat4x4', 'mat4',
+                'float', 'int', 'uint', 'void', 'bool',
+            ],
+            builtin_functions: [
+                'radians', 'degrees', 'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'pow', 'sinh', 'cosh', 'tanh', 'asinh', 'acosh', 'atanh',
+                'exp', 'log', 'exp2', 'log2', 'sqrt', 'inversesqrt', 'abs', 'sign', 'floor', 'ceil', 'round', 'roundEven', 'trunc', 'fract', 'mod', 'modf',
+                'min', 'max', 'clamp', 'mix', 'step', 'smoothstep', 'length', 'distance', 'dot', 'cross',
+                'determinant', 'inverse', 'normalize', 'faceforward', 'reflect', 'refract', 'matrixCompMult', 'outerProduct', 'transpose', 'lessThan',
+                'lessThanEqual', 'greaterThan', 'greaterThanEqual', 'equal', 'notEqual', 'any', 'all', 'not', 'packUnorm2x16', 'unpackUnorm2x16', 'packSnorm2x16', 'unpackSnorm2x16', 'packHalf2x16', 'unpackHalf2x16',
+                'dFdx', 'dFdy', 'fwidth', 'textureSize', 'texture', 'textureProj', 'textureLod', 'textureGrad', 'texelFetch', 'texelFetchOffset',
+                'textureProjLod', 'textureLodOffset', 'textureGradOffset', 'textureProjLodOffset', 'textureProjGrad', 'intBitsToFloat', 'uintBitsToFloat', 'floatBitsToInt', 'floatBitsToUint', 'isnan', 'isinf'
+            ],
+            operators: [
+                '=',
+                '>',
+                '<',
+                '!',
+                '~',
+                '?',
+                ':',
+                '==',
+                '<=',
+                '>=',
+                '!=',
+                '&&',
+                '||',
+                '++',
+                '--',
+                '+',
+                '-',
+                '*',
+                '/',
+                '&',
+                '|',
+                '^',
+                '%',
+                '<<',
+                '>>',
+                '>>>',
+                '+=',
+                '-=',
+                '*=',
+                '/=',
+                '&=',
+                '|=',
+                '^=',
+                '%=',
+                '<<=',
+                '>>=',
+                '>>>='
+            ],
+            symbols: /[=><!~?:&|+\-*\/\^%]+/,
+            escapes: /\\(?:[abfnrtv\\"']|x[0-9A-Fa-f]{1,4}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8})/,
+            integersuffix: /([uU](ll|LL|l|L)|(ll|LL|l|L)?[uU]?)/,
+            floatsuffix: /[fFlL]?/,
+            encoding: /u|u8|U|L/,
+
+            builtin_vars: ['gl_Position', 'gl_FragCoord', 'gl_FragColor', 'gl_FragData',
+                'gl_FrontFacing', 'gl_PointCoord', 'gl_PointSize', 'gl_VertexID',
+                'gl_InstanceID', 'gl_PrimitiveID', 'gl_Layer', 'gl_ViewportIndex',
+                'gl_ClipDistance', 'gl_CullDistance', 'gl_in', 'gl_out',
+                'gl_InvocationID', 'gl_PatchVerticesIn', 'gl_TessLevelOuter',
+                'gl_TessLevelInner', 'gl_TessCoord', 'gl_PrimitiveIDIn',
+                'gl_SampleID', 'gl_SamplePosition', 'gl_SampleMaskIn', 'gl_SampleMask'],
+
+            builtin_consts: ["gl_MaxVertexAttribs", "gl_MaxVertexUniformVectors",
+                "gl_MaxVertexUniformComponents", "gl_MaxVertexOutputComponents"],
+
+            tokenizer: {
+                root: [
+                    // identifiers and keywords
+                    [
+                        /[a-zA-Z_]\w*/,
+                        {
+                            cases: {
+                                '@keywords': { token: 'keyword.$0' },
+                                '@builtin_vars': { token: 'variable.predefined' },
+                                '@builtin_consts': { token: 'variable.predefined' },
+                                '@builtin_functions': { token: 'support.function' },
+                                '@default': 'identifier'
+                            }
+                        }
+                    ],
+
+                    // Preprocessor directive (#define)
+                    [/^\s*#\s*\w+/, 'keyword.directive'],
+
+                    // whitespace
+                    { include: '@whitespace' },
+
+                    // delimiters and operators
+                    [/[{}()\[\]]/, '@brackets'],
+                    [/@symbols/, {
+                        cases: {
+                            '@operators': 'operator',
+                            '@default': ''
+                        }
+                    }],
+
+                    // numbers
+                    [/\d*\d+[eE]([\-+]?\d+)?(@floatsuffix)/, 'number.float'],
+                    [/\d*\.\d+([eE][\-+]?\d+)?(@floatsuffix)/, 'number.float'],
+                    [/0[xX][0-9a-fA-F']*[0-9a-fA-F](@integersuffix)/, 'number.hex'],
+                    [/0[0-7']*[0-7](@integersuffix)/, 'number.octal'],
+                    [/0[bB][0-1']*[0-1](@integersuffix)/, 'number.binary'],
+                    [/\d[\d']*\d(@integersuffix)/, 'number'],
+                    [/\d(@integersuffix)/, 'number'],
+
+                    // delimiter: after number because of .\d floats
+                    [/[;,.]/, 'delimiter']
+                ],
+
+                comment: [
+                    [/[^\/*]+/, 'comment'],
+                    [/\/\*/, 'comment', '@push'],
+                    ['\\*/', 'comment', '@pop'],
+                    [/[\/*]/, 'comment']
+                ],
+
+                // Does it have strings?
+                string: [
+                    [/[^\\"]+/, 'string'],
+                    [/@escapes/, 'string.escape'],
+                    [/\\./, 'string.escape.invalid'],
+                    [/"/, {
+                        token: 'string.quote',
+                        bracket: '@close',
+                        next: '@pop'
+                    }]
+                ],
+
+                whitespace: [
+                    [/[ \t\r\n]+/, 'white'],
+                    [/\/\*/, 'comment', '@comment'],
+                    [/\/\/.*$/, 'comment']
+                ]
+            }
+        }
+
+        // endregion
+
+        require.config({
+            paths: {
+                vs: 'https://unpkg.com/monaco-editor@0.45.0/min/vs',
+            }
+        });
 
         require(['vs/editor/editor.main'], function () {
+
             if (!monaco.languages.getLanguages().find(lang => lang.id === 'glsl')) {
                 monaco.languages.register({ id: 'glsl' });
 
-                monaco.languages.setMonarchTokensProvider('glsl', {
-                    tokenizer: {
-                        root: [
-                            [/\b(attribute|uniform|varying|const|in|out|inout)\b/, 'keyword'],
-                            [/\b(void|bool|int|float|vec2|vec3|vec4|mat2|mat3|mat4|sampler2D|samplerCube)\b/, 'type'],
-                            [/\b(gl_Position|gl_FragColor|gl_FragCoord|gl_PointSize)\b/, 'variable.predefined'],
-                            [/\b(sin|cos|tan|asin|acos|atan|pow|exp|log|sqrt|abs|sign|floor|ceil|fract|mod|min|max|clamp|mix|step|smoothstep|length|distance|dot|cross|normalize|reflect|refract)\b/, 'function'],
-                            [/\/\/.*$/, 'comment'],
-                            [/\/\*[\s\S]*?\*\//, 'comment'],
-                            [/"[^"]*"/, 'string'],
-                            [/\d+(\.\d+)?([eE][+-]?\d+)?[fF]?/, 'number'],
-                            [/[{}()\[\]]/, 'bracket'],
-                            [/[;,.]/, 'delimiter'],
-                            [/[+\-*\/=<>!&|^~]/, 'operator']
-                        ]
-                    }
-                });
+                monaco.languages.setMonarchTokensProvider('glsl', language);
+
+                monaco.languages.setLanguageConfiguration('glsl', conf);
             }
+
             function getInitialTheme() {
                 const theme = document.documentElement.getAttribute('data-theme');
 
@@ -119,33 +294,41 @@
                     case 'geometry-toggle':
                         applyGeometryToggle(e.target.checked);
                         break;
+                }
+            });
 
+            window.addEventListener('load', () => {
+                const params = new URLSearchParams(window.location.search);
+                if (params.has('vertex')) {
+                    data.vertex.model.setValue(decodeURIComponent(params.get('vertex')));
+                }
+                if (params.has('pixel')) {
+                    data.pixel.model.setValue(decodeURIComponent(params.get('pixel')));
+                }
+                if (params.has('geometry')) {
+                    data.geometry.model.setValue(decodeURIComponent(params.get('geometry')));
+                    applyGeometryToggle(true);
+                } else {
+                    applyGeometryToggle(false);
                 }
             });
         });
 
         function getShaderCode() {
-            console.log({
+            return {
                 vertex: data.vertex.model.getValue(),
                 pixel: data.pixel.model.getValue(),
-                geometry: data.geometry.model.getValue()
-            });
+                ...(!document.querySelector("#geometry-tab").disabled) && { geometry: data.geometry.model.getValue() }
+            };
         }
 
         function applyGeometryToggle(show) {
-            console.log(show);
+            const e = document.querySelector("#geometry-tab");
 
-            const e = document.querySelector('label[for="geometry-tab"]');
-
-            if (show) {
-                e.style.display = 'inline-flex';
-            } else {
-                e.style.display = 'none';
-
-                if (document.querySelector('#geometry-tab').checked) {
-                    document.querySelector('#vertex-tab').checked = true;
-                    updateEditorTab('vertex');
-                }
+            e.disabled = !show;
+            if (e.checked) {
+                document.querySelector('#vertex-tab').checked = true;
+                updateEditorTab('vertex');
             }
         }
 
@@ -169,6 +352,45 @@
             editor.restoreViewState(data[tab].state);
             editor.focus();
         }
+
+        function shareCode() {
+            let content = getShaderCode();
+            history.pushState(content, "unused", "?vertex=" + encodeURIComponent(content.vertex) +
+                "&pixel=" + encodeURIComponent(content.pixel) +
+                (content.geometry ? "&geometry=" + encodeURIComponent(content.geometry) : ""));
+
+            navigator.clipboard.writeText(window.location);
+        }
+
+        async function compileRequest(button) {
+            const download = document.querySelector("#download");
+            const title = document.querySelector("#error-title");
+            const error = document.querySelector("#error");
+
+            button.disabled = true;
+
+            let res = await fetch("http://localhost:8000/glsl", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(getShaderCode())
+            });
+
+            if (res.ok) {
+                download.href = URL.createObjectURL(await res.blob());
+
+                title.innerHTML = "Error";
+                error.innerHTML = "";
+            } else {
+                let detail = (await res.json()).detail;
+
+                title.innerHTML = detail.error;
+                error.innerHTML = detail.message;
+            }
+
+            button.disabled = false;
+        }
     </script>
 </head>
 
@@ -181,7 +403,7 @@
             <ul class="menu menu-horizontal px-1">
                 <li>
                     <div class="tooltip tooltip-bottom p-0" data-tip="Copy to clipboard">
-                        <button class="btn btn-ghost text-primary-content">
+                        <button class="btn btn-ghost text-primary-content" onclick="shareCode();">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="size-[1.2em]"
                                 fill="currentColor">
                                 <path
@@ -246,7 +468,7 @@
                     <input type="radio" id="pixel-tab" name="editor-tab" value="pixel">
                     <label for="pixel-tab">Pixel</label>
 
-                    <input type="radio" id="geometry-tab" name="editor-tab" value="geometry">
+                    <input type="radio" id="geometry-tab" name="editor-tab" value="geometry" disabled>
                     <label for="geometry-tab">Geometry</label>
                 </div>
 
@@ -266,22 +488,40 @@
                         </svg>
                     </label>
                 </div>
-
-
             </div>
 
             <div id="editor" class="w-full h-[60vh]"></div>
         </div>
 
+        <div class="collapse collapse-arrow has-[pre:empty]:hidden">
+            <input type="checkbox" />
+            <div id="error-title" class="collapse-title font-semibold bg-error">Error</div>
+            <div class="collapse-content text-sm  border-base-500 border rounded-b-xl p-0 m-0">
+                <pre id="error" class="whitespace-pre-wrap max-w-[90vw] mx-auto overflow-hidden px-4 pt-4"></pre>
+            </div>
+        </div>
+
         <div class="flex align-middle justify-center gap-x-4">
 
-            <button class="btn btn-primary">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512" class="size-5" fill="currentColor">
+            <button class="btn group btn-primary" onclick="compileRequest(this);">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512" class="size-5 mr-1 group-disabled:hidden"
+                    fill="currentColor">
                     <path
                         d="M308.5 135.3c7.1-6.3 9.9-16.2 6.2-25c-2.3-5.3-4.8-10.5-7.6-15.5L304 89.4c-3-5-6.3-9.9-9.8-14.6c-5.7-7.6-15.7-10.1-24.7-7.1l-28.2 9.3c-10.7-8.8-23-16-36.2-20.9L199 27.1c-1.9-9.3-9.1-16.7-18.5-17.8C173.9 8.4 167.2 8 160.4 8l-.7 0c-6.8 0-13.5 .4-20.1 1.2c-9.4 1.1-16.6 8.6-18.5 17.8L115 56.1c-13.3 5-25.5 12.1-36.2 20.9L50.5 67.8c-9-3-19-.5-24.7 7.1c-3.5 4.7-6.8 9.6-9.9 14.6l-3 5.3c-2.8 5-5.3 10.2-7.6 15.6c-3.7 8.7-.9 18.6 6.2 25l22.2 19.8C32.6 161.9 32 168.9 32 176s.6 14.1 1.7 20.9L11.5 216.7c-7.1 6.3-9.9 16.2-6.2 25c2.3 5.3 4.8 10.5 7.6 15.6l3 5.2c3 5.1 6.3 9.9 9.9 14.6c5.7 7.6 15.7 10.1 24.7 7.1l28.2-9.3c10.7 8.8 23 16 36.2 20.9l6.1 29.1c1.9 9.3 9.1 16.7 18.5 17.8c6.7 .8 13.5 1.2 20.4 1.2s13.7-.4 20.4-1.2c9.4-1.1 16.6-8.6 18.5-17.8l6.1-29.1c13.3-5 25.5-12.1 36.2-20.9l28.2 9.3c9 3 19 .5 24.7-7.1c3.5-4.7 6.8-9.5 9.8-14.6l3.1-5.4c2.8-5 5.3-10.2 7.6-15.5c3.7-8.7 .9-18.6-6.2-25l-22.2-19.8c1.1-6.8 1.7-13.8 1.7-20.9s-.6-14.1-1.7-20.9l22.2-19.8zM112 176a48 48 0 1 1 96 0 48 48 0 1 1 -96 0zM504.7 500.5c6.3 7.1 16.2 9.9 25 6.2c5.3-2.3 10.5-4.8 15.5-7.6l5.4-3.1c5-3 9.9-6.3 14.6-9.8c7.6-5.7 10.1-15.7 7.1-24.7l-9.3-28.2c8.8-10.7 16-23 20.9-36.2l29.1-6.1c9.3-1.9 16.7-9.1 17.8-18.5c.8-6.7 1.2-13.5 1.2-20.4s-.4-13.7-1.2-20.4c-1.1-9.4-8.6-16.6-17.8-18.5L583.9 307c-5-13.3-12.1-25.5-20.9-36.2l9.3-28.2c3-9 .5-19-7.1-24.7c-4.7-3.5-9.6-6.8-14.6-9.9l-5.3-3c-5-2.8-10.2-5.3-15.6-7.6c-8.7-3.7-18.6-.9-25 6.2l-19.8 22.2c-6.8-1.1-13.8-1.7-20.9-1.7s-14.1 .6-20.9 1.7l-19.8-22.2c-6.3-7.1-16.2-9.9-25-6.2c-5.3 2.3-10.5 4.8-15.6 7.6l-5.2 3c-5.1 3-9.9 6.3-14.6 9.9c-7.6 5.7-10.1 15.7-7.1 24.7l9.3 28.2c-8.8 10.7-16 23-20.9 36.2L315.1 313c-9.3 1.9-16.7 9.1-17.8 18.5c-.8 6.7-1.2 13.5-1.2 20.4s.4 13.7 1.2 20.4c1.1 9.4 8.6 16.6 17.8 18.5l29.1 6.1c5 13.3 12.1 25.5 20.9 36.2l-9.3 28.2c-3 9-.5 19 7.1 24.7c4.7 3.5 9.5 6.8 14.6 9.8l5.4 3.1c5 2.8 10.2 5.3 15.5 7.6c8.7 3.7 18.6 .9 25-6.2l19.8-22.2c6.8 1.1 13.8 1.7 20.9 1.7s14.1-.6 20.9-1.7l19.8 22.2zM464 304a48 48 0 1 1 0 96 48 48 0 1 1 0-96z" />
                 </svg>
+                <span class="loading loading-spinner group-not-disabled:hidden"></span>
                 Compile
             </button>
+
+
+
+            <a id="download" class="btn btn-primary [&[href='#']]:hidden" href="#" download="shader.gsh">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" class="size-5 mr-1" fill="currentColor">
+                    <path
+                        d="M64 0C28.7 0 0 28.7 0 64L0 448c0 35.3 28.7 64 64 64l256 0c35.3 0 64-28.7 64-64l0-288-128 0c-17.7 0-32-14.3-32-32L224 0 64 0zM256 0l0 128 128 0L256 0zM216 232l0 102.1 31-31c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9l-72 72c-9.4 9.4-24.6 9.4-33.9 0l-72-72c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l31 31L168 232c0-13.3 10.7-24 24-24s24 10.7 24 24z" />
+                </svg>
+                Download
+            </a>
         </div>
 
         <div>
@@ -289,28 +529,55 @@
                 <input type="radio" name="my-accordion-2" checked="checked" />
                 <div class="collapse-title font-semibold">How do I compile shaders?</div>
                 <div class="collapse-content text-sm">
-                    Lorem ipsum dolor sit amet
+                    To compile shaders, paste your shader code into the appropriate editor tabs and click the "Compile"
+                    button. If compilation succeeds, click the "Download" button to save the GSH shader file to your
+                    system. You can then include it in your Wii U homebrew code.
                 </div>
             </div>
             <div class="collapse collapse-arrow bg-base-100 border-b border-base-300">
                 <input type="radio" name="my-accordion-2" />
                 <div class="collapse-title font-semibold">What are shaders?</div>
                 <div class="collapse-content text-sm">
-                    Lorem ipsum dolor sit amet
+                    Shaders are specialized programs designed to run on a GPU. Unlike traditional CPU programs that
+                    execute instructions sequentially one at a time, shaders are inherently parallel and can process
+                    thousands of operations simultaneously across multiple cores. This parallel architecture requires
+                    fundamentally different programming paradigms and optimization strategies compared to typical CPU
+                    programs.
+                    <br />
+                    <br />
+                    Shaders are the core technology responsible for calculating and rendering the actual visuals that
+                    users see on their displays. They handle everything from transforming 3D vertex positions into
+                    screen coordinates, to calculating complex lighting effects, applying textures, and determining the
+                    final color of each pixel. Modern graphics rely entirely on shaders for rendering everything from
+                    simple 2D interfaces to complex 3D scenes with realistic lighting, shadows, and material properties.
                 </div>
             </div>
             <div class="collapse collapse-arrow bg-base-100 border-b border-base-300">
                 <input type="radio" name="my-accordion-2" />
                 <div class="collapse-title font-semibold">How do I write shaders?</div>
                 <div class="collapse-content text-sm">
-                    Lorem ipsum dolor sit amet
+                    Shaders are written in specialized programming languages. A fairly common
+                    graphics driver is OpenGL which, among others, can be programed using the <a
+                        href="https://www.khronos.org/opengl/wiki/Core_Language_(GLSL)" target="_blank"
+                        class="link link-accent">GLSL</a>
+                    language. The Wii U has a custom graphics driver named GX2, but fortunately it is
+                    quite similar to OpenGL and can be
+                    programmed with GLSL.
+                    <br />
+                    <br />
+                    If you are unfamiliar with GLSL, I recommend starting by learning OpenGL and GLSL, then
+                    applying those concepts to Wii U development. There are many resources available online, including
+                    <a href="https://learnopengl.com/" target="_blank" class="link link-accent">Learn OpenGL</a>.
                 </div>
             </div>
             <div class="collapse collapse-arrow bg-base-100 border-b border-base-300">
                 <input type="radio" name="my-accordion-2" />
                 <div class="collapse-title font-semibold">The compilation fails?!</div>
                 <div class="collapse-content text-sm">
-                    Lorem ipsum dolor sit amet
+                    Compiler error messages can be complex and difficult to understand. Please do NOT create GitHub
+                    issues for compilation errors. For help with GLSL code, consult the official GLSL documentation, ask
+                    knowledgeable developers, or try using AI language models for assistance. Only create issues if you
+                    encounter repeated server errors or if you're certain that valid code is being incorrectly rejected.
                 </div>
             </div>
             <div class="collapse collapse-arrow bg-base-100 border-b border-base-300">

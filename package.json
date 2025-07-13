@@ -12,7 +12,7 @@
   },
   "private": true,
   "scripts": {
-    "dev": "bun --serve ./public/**/*.html --console"
+    "dev": "bun ./public/index.html --console"
   },
   "type": "module"
 }

@@ -6,7 +6,8 @@
 	],
 	"settings": {
 		"cSpell.words": [
-			"daisyui"
+			"daisyui",
+			"GLSL"
 		],
 		"files.associations": {
 			"*.css": "tailwindcss"

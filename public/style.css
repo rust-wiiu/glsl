@@ -18,6 +18,10 @@
     @apply btn-primary;
 }
 
-.radio-tabs label[for="geometry-tab"] {
-    display: none;
+.radio-tabs input[type="radio"]:enabled + label {
+    @apply inline-flex;
+}
+
+.radio-tabs input[type="radio"]:not(:enabled) + label {
+    @apply hidden;
 }
