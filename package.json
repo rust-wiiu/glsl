@@ -5,7 +5,7 @@
     "daisyui": "^5.0.46",
     "tailwindcss": "^4.1.11"
   },
-  "name": "glsl-compiler",
+  "name": "glsl-compiler-frontend",
   "peerDependencies": {
     "typescript": "^5"
   },
