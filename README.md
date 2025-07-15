@@ -1,6 +1,8 @@
-# glsl-compiler
+# GLSL Compiler - Frontend
 
-To install dependencies:
+This repo contains the source code of a simple web site. It does NOT contain actual compiler code. All compilation is done at a backend.
+
+Development:
 
 ```bash
 bun install
