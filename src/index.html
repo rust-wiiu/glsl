@@ -10,8 +10,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wii U Shader Compiler</title>
 
-    <link rel="stylesheet" href="style.css" />
     <link rel="icon" href="favicon.svg" />
+    <link rel="stylesheet" href="style.css" />
 
     <script src="https://unpkg.com/monaco-editor@0.45.0/min/vs/loader.js"></script>
 
@@ -369,24 +369,29 @@
 
             button.disabled = true;
 
-            let res = await fetch("http://localhost:8000/glsl", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(getShaderCode())
-            });
+            try {
+                let res = await fetch("http://localhost:8000/glsl", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(getShaderCode())
+                });
 
-            if (res.ok) {
-                download.href = URL.createObjectURL(await res.blob());
+                if (res.ok) {
+                    download.href = URL.createObjectURL(await res.blob());
 
+                    title.innerHTML = "Error";
+                    error.innerHTML = "";
+                } else {
+                    let detail = (await res.json()).detail;
+
+                    title.innerHTML = detail.error;
+                    error.innerHTML = detail.message;
+                }
+            } catch (e) {
                 title.innerHTML = "Error";
-                error.innerHTML = "";
-            } else {
-                let detail = (await res.json()).detail;
-
-                title.innerHTML = detail.error;
-                error.innerHTML = detail.message;
+                error.innerHTML = e.message;
             }
 
             button.disabled = false;
