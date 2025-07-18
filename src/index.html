@@ -370,7 +370,7 @@
             button.disabled = true;
 
             try {
-                let res = await fetch("http://localhost:8000/glsl", {
+                let res = await fetch(atob("aHR0cHM6Ly9nbHNsLWNvbXBpbGVyLWJhY2tlbmQtOTU1MjI4NjE1OTAwLmV1cm9wZS13ZXN0MS5ydW4uYXBwL2dsc2w="), {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
