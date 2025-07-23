@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="style.css" />
 
     <script src="https://unpkg.com/monaco-editor@0.45.0/min/vs/loader.js"></script>
+    <script src="https://www.google.com/recaptcha/api.js?render=6Lcs04wrAAAAAG8lKTLm8S_CN7nG3ZIS2oZ_CZV-"></script>
 
     <script defer>
         let editor = null;
@@ -362,39 +363,43 @@
             navigator.clipboard.writeText(window.location);
         }
 
-        async function compileRequest(button) {
-            const download = document.querySelector("#download");
-            const title = document.querySelector("#error-title");
-            const error = document.querySelector("#error");
+        function compileRequest(button) {
+            grecaptcha.ready(function () {
+                grecaptcha.execute('6Lcs04wrAAAAAG8lKTLm8S_CN7nG3ZIS2oZ_CZV-', { action: 'submit' }).then(async function (token) {
+                    const download = document.querySelector("#download");
+                    const title = document.querySelector("#error-title");
+                    const error = document.querySelector("#error");
 
-            button.disabled = true;
+                    button.disabled = true;
 
-            try {
-                let res = await fetch(atob("aHR0cHM6Ly9nbHNsLWNvbXBpbGVyLWJhY2tlbmQtOTU1MjI4NjE1OTAwLmV1cm9wZS13ZXN0MS5ydW4uYXBwL2dsc2w="), {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify(getShaderCode())
+                    try {
+                        let res = await fetch(atob("aHR0cHM6Ly9nbHNsLWNvbXBpbGVyLWJhY2tlbmQtOTU1MjI4NjE1OTAwLmV1cm9wZS13ZXN0MS5ydW4uYXBwL2dsc2w="), {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify(getShaderCode())
+                        });
+
+                        if (res.ok) {
+                            download.href = URL.createObjectURL(await res.blob());
+
+                            title.innerHTML = "Error";
+                            error.innerHTML = "";
+                        } else {
+                            let detail = (await res.json()).detail;
+
+                            title.innerHTML = detail.error;
+                            error.innerHTML = detail.message;
+                        }
+                    } catch (e) {
+                        title.innerHTML = "Error";
+                        error.innerHTML = e.message;
+                    }
+
+                    button.disabled = false;
                 });
-
-                if (res.ok) {
-                    download.href = URL.createObjectURL(await res.blob());
-
-                    title.innerHTML = "Error";
-                    error.innerHTML = "";
-                } else {
-                    let detail = (await res.json()).detail;
-
-                    title.innerHTML = detail.error;
-                    error.innerHTML = detail.message;
-                }
-            } catch (e) {
-                title.innerHTML = "Error";
-                error.innerHTML = e.message;
-            }
-
-            button.disabled = false;
+            });
         }
     </script>
 </head>
